@@ -1,3 +1,6 @@
+import 'package:battery_saver/wyze/errors/wyze_errors.dart';
+import 'package:flutter/material.dart';
+
 import '../modles.dart';
 import 'base.dart';
 
@@ -51,4 +54,34 @@ class Plug extends AbstractWirelessNetworkedDevice with SwitchableMixin {
     awayMode = extractProperty(propDef: PlugProps.awayMode(), others:  others);
     // show_unknown_key_warning(others);
   }
+  
+  static Plug? parse(dynamic device) {
+    if (device == null) {
+      return null;
+    } else if (device is Plug) {
+      return device;
+    } else if (device is Map) {
+      if (device.containsKey('product_type')) {
+        final type = device["product_type"];
+        if (type == Plug.pType) {
+          return Plug(type: type, others: device);
+        } else if (type == OutdoorPlug.pType) {
+          return OutdoorPlug(others: device);
+        } else {
+          debugPrint("Unknown plug detected ($device)");
+          return Plug(type: type, others: device);
+        }
+      }
+      return null;
+    }
+    throw const WyzeObjectFormationError('Device needs to be of type Map or PLug');
+  }
+}
+
+class OutdoorPlug extends Plug {
+  static const pType = "OutdoorPlug";
+
+  OutdoorPlug({required Map others}) : super(type: pType, others: others);
+
+  // TODO: more in here to implement
 }

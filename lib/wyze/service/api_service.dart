@@ -1,5 +1,8 @@
+import 'dart:math';
+
 import 'package:battery_saver/wyze/service/base.dart';
 import 'package:battery_saver/wyze/signature/signature.dart';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 /// Wyze api client is the wrapper on the requests to https://api.wyzecam.com
@@ -62,7 +65,7 @@ class ApiServiceClient extends BaseServiceClient {
     return apiCall(apiEndpoint: '/app/user/refresh_token', json: args);
   }
 
-  Future<http.Response> setDeviceProperty(String mac, String model, String pid, dynamic value, Map? args) {
+  Future<http.Response> setDeviceProperty(String mac, String model, String pid, dynamic value, [Map? args]) {
     args ??= {};
     const svSetDeviceProperty = '44b6d5640c4d4978baba65c8ab9a6d6e';
 
@@ -101,7 +104,7 @@ class ApiServiceClient extends BaseServiceClient {
     return apiCall(apiEndpoint: '/app/v2/device_list/get_property_list', json: args);
   }
 
-  Future<http.Response> getDevicePropertyList(String mac, String model, List<String>? targetPids, Map? args) {
+  Future<http.Response> getDevicePropertyList(String mac, String model, List<String>? targetPids, [Map? args]) {
     args ??= {};
     const svGetDevicePropertyList = '1df2807c63254e16a06213323fe8dec8';
 
@@ -156,7 +159,7 @@ class ApiServiceClient extends BaseServiceClient {
   ///     "delay_time": 10800,
   ///     "plan_execute_ts": 1618169169544
   /// },
-  Future<http.Response> getDeviceTimer(String mac, int actionType, Map? args) {
+  Future<http.Response> getDeviceTimer(String mac, int actionType, [Map? args]) {
     args ??= {};
     const svGetDeviceTimer = 'ddd49252f61944dc9c46d1a770a5980f';
 
@@ -194,7 +197,7 @@ class ApiServiceClient extends BaseServiceClient {
     return apiCall(apiEndpoint: '/app/v2/device_group/timer/get', json: args);
   }
 
-  Future<http.Response> cancelDeviceTimer(String mac, int actionType, Map? args) {
+  Future<http.Response> cancelDeviceTimer(String mac, int actionType, [Map? args]) {
     args ??= {};
     const svCancelDeviceTImer = '8670b7ddb88845468b77ef4d383bfd59';
 
@@ -202,7 +205,7 @@ class ApiServiceClient extends BaseServiceClient {
     return apiCall(apiEndpoint: '/app/v2/device/timer/cancel', json: args);
   }
 
-  Future<http.Response> getPlugUsageRecordList(String mac, DateTime startTime, DateTime endTime, Map? args) {
+  Future<http.Response> getPlugUsageRecordList(String mac, DateTime startTime, DateTime endTime, [Map? args]) {
     args ??= {};
     const svGetPlugUsageRecordList = '17eff072fba0469a800502cab514412e';
 
@@ -287,7 +290,7 @@ class ApiServiceClient extends BaseServiceClient {
     return apiCall(apiEndpoint: '/app/v2/device_event/set_read_state_list', json: args);
   }
 
-  Future<http.Response> runAction(String mac, String actionKey, Map? actionParams, String? customString, String providerKey, Map? args) {
+  Future<http.Response> runAction(String mac, String actionKey, String providerKey, {Map? actionParams, String? customString, Map? args}) {
     actionParams ??= {};
     args ??= {};
     const svRunAction = '011a6b42d80a4f32b4cc24bb721c9c96';
@@ -340,5 +343,80 @@ class ApiServiceClient extends BaseServiceClient {
 
     if (customString != null) args.addAll({"custom_string": customString});
     return apiCall(apiEndpoint: '/app/v2/auto/run_action_list', json: args);
+  }
+}
+
+class AwayModeGenerator {
+  double? cursorTime;
+  double? remainTime;
+
+  List<String> get value {
+    final List<double> values = [];
+
+    final localAmStart = DateTime(1970, 1, 1, 6, 0, 0);
+    final localAmEnd = DateTime(1970, 1, 1, 9, 0, 0);
+    final localPmStart = DateTime(1970, 1, 1, 18, 0, 0);
+    final localPmEnd = DateTime(1970, 1, 1, 23, 0, 0);
+
+    _calculateAwayMode(values, localAmStart, localAmEnd);
+    _removeUnreasonableData(values, localAmEnd);
+    _calculateAwayMode(values, localPmStart, localPmEnd);
+    _removeUnreasonableData(values, localPmEnd);
+
+    final List<String> valueList = [];
+    var i2 = 1;
+    for (final value in values) {
+      final datetime = DateTime.fromMillisecondsSinceEpoch((value * 1000).round()).toUtc();
+      valueList.add("${datetime.hour.toString().padLeft(2, '0')}${datetime.minute.toString().padLeft(2, '0')}$i2");
+      i2 ^= 1;  // adds the on/off bit
+    }
+
+    debugPrint("value returning=$valueList");
+    return valueList;
+  }
+
+  /// See: com.hualai.wlpp1.u2.b
+  List<double> _calculateAwayMode(List<double> arrayList, DateTime localStart, DateTime localEnd) {
+    final gmtStartTime = localStart.millisecondsSinceEpoch / 1000;
+    final gmtEndTime = localEnd.millisecondsSinceEpoch / 1000;
+    remainTime = gmtEndTime - gmtStartTime;
+    cursorTime = gmtStartTime;
+    var z = false;
+    while (true) {
+      if (z) {
+        arrayList.add(_randomize(3600, 60, gmtEndTime));
+        z = !z;
+      } else if (remainTime! <= 900) {
+        return arrayList;
+      } else {
+        arrayList.add(_randomize(3600, 60, gmtEndTime));
+        z = !z;
+      }
+    }
+  }
+
+  _removeUnreasonableData(List<double>? arrayList, DateTime localEnd) {
+    if (arrayList != null && arrayList.length >= 2) {
+      final lastData = arrayList.last + _localTimezoneInSeconds;
+      debugPrint("remove_unreasonable_data last_data=$lastData local_end=$localEnd");
+      if (lastData > localEnd.millisecondsSinceEpoch / 1000) {
+        debugPrint("remove_unreasonable_data item ${arrayList.last}");
+        arrayList.removeLast();
+        arrayList.removeLast();
+      }
+    }
+  }
+
+  int get _localTimezoneInSeconds => DateTime.now().timeZoneOffset.inSeconds;
+
+  double _randomize(double secondsPerHour, double secondsPerMinute, double endTime) {
+    debugPrint("_randomize remain_time=$remainTime");
+    debugPrint("_randomize cursor_time=$cursorTime");
+    final minutesRemaining = (remainTime! - secondsPerHour) >= 0 ? 60.0 : (remainTime! % secondsPerHour) / secondsPerMinute;
+    debugPrint("_randomize minutes_remaining=$minutesRemaining");
+    final random = cursorTime! + (((Random().nextDouble() * (minutesRemaining - 5)) + 5.0) * secondsPerMinute);
+    cursorTime = random;
+    remainTime = endTime - (random + secondsPerMinute);
+    return cursorTime!;
   }
 }

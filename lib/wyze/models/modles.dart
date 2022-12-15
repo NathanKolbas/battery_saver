@@ -7,7 +7,7 @@ class JsonObject extends BaseObject {
   Set<String> attributes = {};
 
   /// Extracts a single value by name from a variety of locations in an object.
-  extractAttribute(String name, Map others) {
+  dynamic extractAttribute(String name, Map others) {
     if (others.containsKey(name)) {
       final value = others.remove(name);
       return value != null && value != '' ? value : null;

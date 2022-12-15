@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:battery_saver/wyze/api/client.dart';
+import 'package:battery_saver/wyze/errors/wyze_errors.dart';
 import 'package:flutter/material.dart';
 
 void main() {

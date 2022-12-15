@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:battery_saver/extensions/iterable_extensions.dart';
 import 'package:battery_saver/extensions/string_extensions.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -9,6 +10,7 @@ import '../models/devices/base.dart';
 import '../models/devices/devices.dart';
 import '../service/api_service.dart';
 import '../service/auth_service.dart';
+import 'devices/plugs.dart';
 
 class Client {
   /// A string used for API-based requests
@@ -26,6 +28,8 @@ class Client {
   /// The maximum number of seconds the client will wait to connect and receive a response from Wyze. Defaults to 30
   late int timeout;
   String? userId;
+
+  PlugsClient get plugs => PlugsClient(token: token, baseUrl: baseUrl);
 
   Client({
     this.token,
@@ -109,6 +113,6 @@ class Client {
   Future<List<Device>> devicesList() async {
     final response = await _apiClient().getObjectList();
     final decodedResponse = jsonDecode(response.body) as Map;
-    return decodedResponse["data"]["device_list"].map((device) => DeviceParser.parse(device));
+    return (decodedResponse["data"]["device_list"] as List<dynamic>).mapSkipNull<Device>((device) => DeviceParser.parse(device)).toList();
   }
 }

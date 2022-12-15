@@ -4,6 +4,11 @@ import 'package:flutter/material.dart';
 
 import '../modles.dart';
 
+class DeviceModels {
+  static const outdoorPlug = ['WLPPO', 'WLPPO-SUB'];
+  static final plug = ['WLPP1', 'WLPP1CFH'] + DeviceModels.outdoorPlug;
+}
+
 /// The product information for a Wyze-branded device.
 class Product {
   final attributes = {
