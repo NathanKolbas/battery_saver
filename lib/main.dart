@@ -1,10 +1,17 @@
 import 'dart:convert';
 
+import 'package:battery_saver/services/foreground_battery_service.dart';
 import 'package:battery_saver/wyze/api/client.dart';
 import 'package:battery_saver/wyze/errors/wyze_errors.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-void main() {
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Setup foreground service
+  await initializeBatteryService();
+
   runApp(const MyApp());
 }
 
@@ -31,6 +38,15 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  @override
+  void initState() {
+    super.initState();
+
+    // Request permissions
+    FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+    flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.requestPermission();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
