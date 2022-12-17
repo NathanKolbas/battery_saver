@@ -7,7 +7,7 @@ class DeviceParser {
   static Device? parse(dynamic device) {
     if (device == null) return null;
     if (device is Device) return device;
-    if (device is Map && device.containsKey('product_type')) {
+    if (device is Map<String, dynamic> && device.containsKey('product_type')) {
       final type = device["product_type"];
       switch (type) {
         case Plug.pType:

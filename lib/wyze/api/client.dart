@@ -47,7 +47,7 @@ class Client {
     totpKey = totpKey?.trim();
 
     if (token.isNullEmpty && email.isNotNullEmpty) {
-      login(email, password, totpKey);
+      login(email, password, null, totpKey);
     }
   }
 
@@ -57,7 +57,7 @@ class Client {
   /// :rtype: WyzeResponse
   /// :raises WyzeClientConfigurationError: If ``access_token`` is already set or both ``email`` and ``password`` are not set.
   Client.login(String this.email, String this.password, [this.totpKey]) {
-    login(email, password, totpKey);
+    login(email, password, null, totpKey);
   }
 
   AuthServiceClient _authClient() => baseUrl != null ? AuthServiceClient(token: token, baseUrl: baseUrl) : AuthServiceClient(token: token);
@@ -74,7 +74,7 @@ class Client {
     }
   }
 
-  Future<http.Response> login(String? email, String? password, [String? totpKey]) async {
+  Future<http.Response> login(String? email, String? password, [Future<String?> Function(TotpCallbackType type)? totpCallback, String? totpKey]) async {
     if (token.isNotNullEmpty) {
       throw const WyzeClientConfigurationError("already logged in");
     }
@@ -89,10 +89,19 @@ class Client {
       throw const WyzeClientConfigurationError("must provide email and password");
     }
     debugPrint('access token not provided, attempting to login as ${this.email}');
-    final response = await _authClient().userLogin(email: this.email!, password: this.password!, totpKey: this.totpKey);
+    final response = await _authClient().userLogin(email: this.email!, password: this.password!, totpKey: this.totpKey, totpCallback: totpCallback);
     final decodedResponse = jsonDecode(response.body) as Map;
     _updateSession(accessToken: decodedResponse["access_token"], refreshToken: decodedResponse["refresh_token"], userId: decodedResponse["user_id"]);
     return response;
+  }
+
+  logout() {
+    token = null;
+    refreshToken = null;
+    email = null;
+    password = null;
+    totpKey = null;
+    baseUrl = null;
   }
 
   /// Updates ``access_token`` using the previously set ``refresh_token``.

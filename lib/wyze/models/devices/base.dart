@@ -17,19 +17,19 @@ class Product {
     "logo_url",
   };
 
-  late String _type;
-  String get type => _type;
+  late String? _type;
+  String? get type => _type;
 
-  late String _model;
-  String get model => _model;
+  late String? _model;
+  String? get model => _model;
 
-  late String _logoUrl;
-  String get logoUrl => _logoUrl;
+  late String? _logoUrl;
+  String? get logoUrl => _logoUrl;
 
   Product({
-    required String type,
-    required String model,
-    required String logoUrl,
+    required String? type,
+    required String? model,
+    required String? logoUrl,
   }) {
     _type = type;
     _model = model;
@@ -183,7 +183,7 @@ class Device extends JsonObject {
       _isOnline = extractProperty(propDef: DeviceProps.onlineState(), others: dict);
     }
     _enr = dict['enr'];
-    _pushSwitch = dict['push_switch'];
+    _pushSwitch = dict['push_switch'].toString();
     _firmwareVersion = dict['firmware_ver'] ?? extractAttribute('firmware_ver', dict);
     _hardwareVersion = dict['hardware_ver'] ?? extractAttribute('firmware_ver', dict);
     if (dict['parent_device_mac'] != null) {
@@ -241,19 +241,19 @@ class Device extends JsonObject {
       }
       if (others.containsKey('data') && others['data'].containsKey('property_list')) {
         debugPrint("found non-empty data property_list");
-        extractProperty(propDef: propDef, others: others['data']);
+        return extractProperty(propDef: propDef, others: others['data']);
       }
       if (others.containsKey('props') && others['props'] != null) {
         debugPrint("found non-empty props");
-        extractProperty(propDef: propDef, others: others['props']);
+        return extractProperty(propDef: propDef, others: others['props']);
       }
       if (others.containsKey('property_list') && others['property_list'] != null) {
         debugPrint("found non-empty property_list");
-        extractProperty(propDef: propDef, others: others['property_list']);
+        return extractProperty(propDef: propDef, others: others['property_list']);
       }
       if (others.containsKey('device_params') && others['device_params'] != null) {
         debugPrint("found non-empty device_params");
-        extractProperty(propDef: propDef, others: others['device_params']);
+        return extractProperty(propDef: propDef, others: others['device_params']);
       }
     } else {
       debugPrint("extracting property ${propDef.pid} from ${(others).toString()} $others");
@@ -276,7 +276,7 @@ class AbstractNetworkedDevice extends Device {
   AbstractNetworkedDevice({
     String? type,
     String? ip,
-    required Map others,
+    required Map<String, dynamic> others,
   }) : super(others..addAll({'type': type})) {
     _ip = ip ?? super.extractAttribute('ip', others);
     _ip ??= super.extractAttribute('ipaddr', others);
@@ -294,9 +294,9 @@ class AbstractWirelessNetworkedDevice extends AbstractNetworkedDevice {
     String? type,
     int? rssi,
     String? ssid,
-    required Map others,
+    required Map<String, dynamic> others,
   }) : super(others: others..addAll({'type': type})) {
-    _rssi = rssi ?? super.extractAttribute('rssi', others);
+    _rssi = int.parse(rssi ?? super.extractAttribute('rssi', others));
     _ssid = ssid ?? super.extractAttribute('ssid', others);
   }
 }
@@ -305,5 +305,5 @@ class AbstractWirelessNetworkedDevice extends AbstractNetworkedDevice {
 class SwitchableMixin {
   DeviceProp? switchState;
 
-  bool get isOn => switchState == null ? false : switchState!.value;
+  bool get isOn => switchState?.value == 1;
 }

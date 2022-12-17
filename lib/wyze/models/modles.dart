@@ -1,6 +1,6 @@
 class BaseObject {
   @override
-  String toString() => "<wyze_sdk.${(this).toString()}>";
+  String toString() => "<wyze_sdk.$runtimeType>";
 }
 
 class JsonObject extends BaseObject {

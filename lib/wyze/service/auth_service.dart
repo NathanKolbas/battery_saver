@@ -7,6 +7,11 @@ import 'package:http/http.dart' as http;
 import '../signature/signature.dart';
 import 'base.dart';
 
+enum TotpCallbackType {
+  mfa,
+  sms,
+}
+
 class AuthServiceClient extends ExServiceClient {
   /// Auth service client is the wrapper on the requests to https://auth-prod.api.wyze.com
   static const wyzeApiKey = 'RckMFKbsds5p6QY3COEXc2ABwNTYY0q18ziEiSEm';
@@ -65,6 +70,7 @@ class AuthServiceClient extends ExServiceClient {
     required String email,
     required String password,
     String? totpKey,
+    Future<String?> Function(TotpCallbackType type)? totpCallback,
   }) async {
     if (requestVerifier == null) throw const WyzeApiError('requestVerifier is null');
 
@@ -77,15 +83,14 @@ class AuthServiceClient extends ExServiceClient {
     };
     final response = await apiCall(apiEndpoint: '/user/login', json: kwargs, nonce: nonce);
     final decodedResponse = jsonDecode(response.body) as Map;
-    print(decodedResponse);
     if (decodedResponse['access_token'] != null) return response;
     if (decodedResponse['errorCode'] == 1000) throw const WyzeApiError('Too many failed attempts');
+    if (totpCallback == null) throw const WyzeClientConfigurationError('MFA needed but no callback function provided');
 
     var mfaType = '';
     var verificationCode = '';
     var verificationId = '';
 
-    print(decodedResponse);
     if (decodedResponse.containsKey('mfa_options') &&
         decodedResponse['mfa_options'] is List &&
         (decodedResponse['mfa_options'] as List).contains('TotpVerificationCode')) {
@@ -97,7 +102,9 @@ class AuthServiceClient extends ExServiceClient {
         //     return hotp(key, int(time.time() / time_step), digits, digest)
         verificationCode = OTP.generateTOTPCode(totpKey, ((DateTime.now().millisecondsSinceEpoch / 1000) / 30).round(), algorithm: Algorithm.SHA1).toString();
       } else {
-        verificationCode = ''; // TODO ASK FOR 2FA
+        final totpCode = await totpCallback(TotpCallbackType.mfa);
+        if (totpCode == null) throw Exception('Canceled MFA');
+        verificationCode = totpCode;
       }
       verificationId = decodedResponse['mfa_details']['totp_apps'][0]['app_id'];
     } else {
@@ -111,7 +118,9 @@ class AuthServiceClient extends ExServiceClient {
       final responsePhone = await apiCall(apiEndpoint: '/user/login/sendSmsCode', params: params, json: {});
       final decodedPhoneResponse = jsonDecode(responsePhone.body) as Map;
       verificationId = decodedPhoneResponse['session_id'];
-      verificationCode = ''; // TODO get the user to give the input
+      final totpCode = await totpCallback(TotpCallbackType.mfa);
+      if (totpCode == null) throw Exception('Canceled MFA');
+      verificationCode = totpCode;
     }
 
     final payload = {

@@ -46,9 +46,13 @@ class Plug extends AbstractWirelessNetworkedDevice with SwitchableMixin {
 
   Plug({
     String? type,
-    required Map others,
+    required Map<String, dynamic> others,
   }) : super(others: others..addAll({'type': type})) {
-    switchState = extractProperty(propDef: DeviceProps.powerState(), others: others);
+    // TODO: Fix extractProperty and DeviceProps
+    // They need to handled correctly in Dart since the translation from Python
+    // was really bad by me. For now, I am going to cheat this.
+    // switchState = extractProperty(propDef: DeviceProps.powerState(), others: others);
+    switchState = extractProperty(propDef: 'switch_state', others: others);
     // _switch_state_timer = super.extractAttribute("switch_state_timer", others);
     statusLight = extractProperty(propDef: PlugProps.statusLight(), others:  others);
     awayMode = extractProperty(propDef: PlugProps.awayMode(), others:  others);
@@ -60,7 +64,7 @@ class Plug extends AbstractWirelessNetworkedDevice with SwitchableMixin {
       return null;
     } else if (device is Plug) {
       return device;
-    } else if (device is Map) {
+    } else if (device is Map<String, dynamic>) {
       if (device.containsKey('product_type')) {
         final type = device["product_type"];
         if (type == Plug.pType) {
@@ -81,7 +85,7 @@ class Plug extends AbstractWirelessNetworkedDevice with SwitchableMixin {
 class OutdoorPlug extends Plug {
   static const pType = "OutdoorPlug";
 
-  OutdoorPlug({required Map others}) : super(type: pType, others: others);
+  OutdoorPlug({required Map<String, dynamic> others}) : super(type: pType, others: others);
 
   // TODO: more in here to implement
 }

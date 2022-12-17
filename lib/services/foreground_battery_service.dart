@@ -8,6 +8,11 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_background_service_android/flutter_background_service_android.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+import '../hive/hive_helper.dart';
+import '../hive/preferences/charging_preferences.dart';
+import '../providers/charging_provider.dart';
+import '../providers/wyze_client_provider.dart';
+
 const notificationTitle = 'Battery Saver';
 const notificationChannelName = 'Batter Info Listener';
 const notificationChannelId = 'foreground_battery_service';
@@ -17,10 +22,13 @@ const notificationIcon = 'ic_bg_service_small';
 const turnOnActionId = 'turn_on';
 const turnOffActionId = 'turn_off';
 
+final service = FlutterBackgroundService();
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
 const notChargingTimerSeconds = 10;
 Timer? notChargingTimer;
+
+bool chargingFlag = true;
 
 String microAmpsString(int microAmps) {
   final milliAmps = (microAmps / 1000).round();
@@ -38,7 +46,6 @@ String chargeTimeRemainingString(int timeRemaining) {
 
 @pragma('vm:entry-point')
 void onStart(ServiceInstance service) async {
-  // Only available for flutter 3.0.0 and later
   DartPluginRegistrant.ensureInitialized();
 
   if (service is AndroidServiceInstance) {
@@ -52,18 +59,37 @@ void onStart(ServiceInstance service) async {
   }
 
   service.on('stopService').listen((event) {
+    print('stopService');
     service.stopSelf();
   });
 
+  /// Check if the service should be running
+  try {
+    await setupHive();
+  } catch (e) {
+    // TODO: fix
+  }
+  final ChargingPreferences chargingPreferences = ChargingPreferences.load();
+  if (chargingPreferences.chargeOff) service.stopSelf();
+
   BatteryInfoPlugin().androidBatteryInfoStream.listen((AndroidBatteryInfo? batteryInfo) async {
-    print(batteryInfo);
     if (batteryInfo == null) return;
 
-    print(batteryInfo.batteryLevel);
-    print(batteryInfo.chargingStatus);
-
     if (service is! AndroidServiceInstance) return;
-    if (!(await service.isForegroundService())) return;
+
+    try {
+      await setupHive();
+    } catch (e) {
+      // TODO: fix
+    }
+    final wyzeClientProvider = await WyzeClientProvider().initialize();
+    final ChargingPreferences chargingPreferences = await ChargingPreferences.loadReopen();
+
+    // Check if the service should be running
+    if (chargingPreferences.chargeOff) {
+      service.stopSelf();
+      return;
+    }
 
     notChargingTimer?.cancel();
     String title = notificationTitle;
@@ -91,6 +117,24 @@ void onStart(ServiceInstance service) async {
     );
 
     if (batteryInfo.chargingStatus == ChargingStatus.Charging) {
+      /// Handle the charger
+      // Check if first time charging
+      if (chargingFlag) {
+        chargingFlag = false;
+        // Turn on all the plugs for the first time charging
+        for (final device in chargingPreferences.selectedDevices) {
+          wyzeClientProvider.turnOnPlug(device.mac, device.model);
+        }
+      }
+
+      if ((batteryInfo.batteryLevel?.toInt() ?? 0) >= chargingPreferences.chargePercentage) {
+        // Turn off all the plugs since we reached the charge
+        for (final device in chargingPreferences.selectedDevices) {
+          wyzeClientProvider.turnOffPlug(device.mac, device.model);
+        }
+      }
+
+      /// Notification
       final chargeTimeRemaining = batteryInfo.chargeTimeRemaining;
       if (chargeTimeRemaining != null && chargeTimeRemaining != -1) {
         title = "$notificationTitle (${chargeTimeRemainingString(chargeTimeRemaining)} to full)";
@@ -98,6 +142,17 @@ void onStart(ServiceInstance service) async {
       final currentNow = microAmpsString(batteryInfo.currentNow ?? 0);
       body = "Charging ${batteryInfo.batteryLevel}% • $currentNow • ${batteryInfo.temperature}°C • ${((batteryInfo.voltage ?? 0) / 1000).toStringAsFixed(2)}V";
     } else {
+      /// Handle charger
+      // Only run once
+      if (chargingFlag) return;
+
+      chargingFlag = true;
+      // Turn on all the plugs since the device is no longer charging
+      for (final device in chargingPreferences.selectedDevices) {
+        wyzeClientProvider.turnOnPlug(device.mac, device.model);
+      }
+
+      /// Notification
       chargingFunction([_]) async {
         final newBatteryInfo = (await BatteryInfoPlugin().androidBatteryInfo);
         if (newBatteryInfo == null) return;
@@ -126,7 +181,15 @@ void onStart(ServiceInstance service) async {
 }
 
 @pragma('vm:entry-point')
-void notificationTapBackground(NotificationResponse response) {
+void notificationTapBackground(NotificationResponse response) async {
+  try {
+    await setupHive();
+  } catch (e) {
+    // TODO: fix
+  }
+  final wyzeClientProvider = await WyzeClientProvider().initialize();
+  final ChargingPreferences chargingPreferences = ChargingPreferences.load();
+
   // Remember to add `@pragma('vm:entry-point')` to the functions
   switch (response.notificationResponseType) {
     case NotificationResponseType.selectedNotification:
@@ -137,16 +200,22 @@ void notificationTapBackground(NotificationResponse response) {
       if (response.actionId == turnOnActionId) {
         // handle on
         print('On');
+        for (final device in chargingPreferences.selectedDevices) {
+          wyzeClientProvider.turnOnPlug(device.mac, device.model);
+        }
       } else if (response.actionId == turnOffActionId) {
         // Handle off
         print('Off');
+        for (final device in chargingPreferences.selectedDevices) {
+          wyzeClientProvider.turnOffPlug(device.mac, device.model);
+        }
       }
       break;
   }
 }
 
 Future<void> initializeBatteryService() async {
-  final service = FlutterBackgroundService();
+  if (await service.isRunning()) return;
 
   const AndroidNotificationChannel channel = AndroidNotificationChannel(
     notificationChannelId,
@@ -201,6 +270,14 @@ Future<void> initializeBatteryService() async {
     // Not yet supported
     iosConfiguration: IosConfiguration(autoStart: false),
   );
+}
 
-  service.startService();
+startBatteryService() async {
+  if ((await service.isRunning())) return;
+  final off = ChargingProvider().chargingPreferences.chargeOff;
+  if (!off) service.startService();
+}
+
+stopBatteryService() async {
+  service.invoke('stopService');
 }
