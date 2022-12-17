@@ -17,7 +17,7 @@ const notificationTitle = 'Battery Saver';
 const notificationChannelName = 'Batter Info Listener';
 const notificationChannelId = 'foreground_battery_service';
 const foregroundServiceNotificationId = 1;
-const notificationIcon = 'ic_bg_service_small';
+const notificationIcon = 'ic_baseline_energy_savings_leaf_24';
 
 const turnOnActionId = 'turn_on';
 const turnOffActionId = 'turn_off';

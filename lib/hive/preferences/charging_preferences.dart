@@ -12,13 +12,16 @@ class ChargingPreferences extends HiveObject {
   bool get chargeOff => chargePercentage == 0;
 
   @HiveField(1)
-  List<DevicePreferences> selectedDevices;
-  static const selectedDevicesDefault = <DevicePreferences>[];
+  late List<DevicePreferences> selectedDevices;
+  final selectedDevicesDefault = <DevicePreferences>[];
 
   ChargingPreferences({
     this.chargePercentage = chargePercentageDefault,
-    this.selectedDevices = selectedDevicesDefault,
-  });
+    List<DevicePreferences>? selectedDevices,
+  }) {
+    // If you use a const list then that list can not be modified which prevents adding
+    this.selectedDevices = selectedDevices ?? selectedDevicesDefault;
+  }
 
   static ChargingPreferences load() {
     return boxChargingPrefs?.get('ChargingPreferences', defaultValue: ChargingPreferences());
