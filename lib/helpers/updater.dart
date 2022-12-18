@@ -105,7 +105,7 @@ class GitHubUpdater {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(content),
       action: data.response == GitHubUpdaterCheckUpdateResponse.update ? SnackBarAction(
-        onPressed: () => launchUrlString(data.releaseUrl),
+        onPressed: () => launchUrlString(data.releaseUrl, mode: LaunchMode.externalApplication),
         label: 'Download',
       ) : null,
     ));

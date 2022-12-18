@@ -87,7 +87,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
                 PopupMenuItem(
-                  onTap: () => launchUrlString('https://github.com/NathanKolbas/batter_saver'),
+                  onTap: () => launchUrlString('https://github.com/NathanKolbas/batter_saver', mode: LaunchMode.externalApplication),
                   child: const Text('GitHub'),
                 ),
               ],
