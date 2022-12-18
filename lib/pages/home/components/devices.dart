@@ -74,8 +74,8 @@ class Devices extends StatelessWidget {
                 toggle: (b) {
                   final client = Provider.of<WyzeClientProvider>(context, listen: false);
                   b ?
-                    client.turnOffPlug(device.mac!, device.product!.model!) :
-                    client.turnOnPlug(device.mac!, device.product!.model!);
+                    client.turnOnPlug(device.mac!, device.product!.model!) :
+                    client.turnOffPlug(device.mac!, device.product!.model!);
                 },
                 initialValue: device.isOn,
               ),
