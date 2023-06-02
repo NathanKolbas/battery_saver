@@ -1,5 +1,7 @@
 import 'package:hive/hive.dart';
 
+part 'device_preference.g.dart';
+
 @HiveType(typeId: 1)
 class DevicePreferences extends HiveObject {
   @HiveField(0)

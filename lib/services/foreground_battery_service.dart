@@ -28,8 +28,6 @@ final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterL
 const notChargingTimerSeconds = 10;
 Timer? notChargingTimer;
 
-bool chargingFlag = true;
-
 String microAmpsString(int microAmps) {
   final milliAmps = (microAmps / 1000).round();
   if (milliAmps < 1000) return "$milliAmps mA";
@@ -118,15 +116,6 @@ void onStart(ServiceInstance service) async {
 
     if (batteryInfo.chargingStatus == ChargingStatus.Charging) {
       /// Handle the charger
-      // Check if first time charging
-      if (chargingFlag) {
-        chargingFlag = false;
-        // Turn on all the plugs for the first time charging
-        for (final device in chargingPreferences.selectedDevices) {
-          wyzeClientProvider.turnOnPlug(device.mac, device.model);
-        }
-      }
-
       if ((batteryInfo.batteryLevel?.toInt() ?? 0) >= chargingPreferences.chargePercentage) {
         // Turn off all the plugs since we reached the charge
         for (final device in chargingPreferences.selectedDevices) {
@@ -143,13 +132,11 @@ void onStart(ServiceInstance service) async {
       body = "Charging ${batteryInfo.batteryLevel}% • $currentNow • ${batteryInfo.temperature}°C • ${((batteryInfo.voltage ?? 0) / 1000).toStringAsFixed(2)}V";
     } else {
       /// Handle charger
-      // Only run once
-      if (chargingFlag) return;
-
-      chargingFlag = true;
-      // Turn on all the plugs since the device is no longer charging
-      for (final device in chargingPreferences.selectedDevices) {
-        wyzeClientProvider.turnOnPlug(device.mac, device.model);
+      if ((batteryInfo.batteryLevel?.toInt() ?? 0) <= chargingPreferences.chargePercentageTurnOn) {
+        // Turn on all the plugs since we reached to min charge
+        for (final device in chargingPreferences.selectedDevices) {
+          wyzeClientProvider.turnOnPlug(device.mac, device.model);
+        }
       }
 
       /// Notification

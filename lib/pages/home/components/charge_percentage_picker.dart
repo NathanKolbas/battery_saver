@@ -1,6 +1,7 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:sleek_circular_slider/sleek_circular_slider.dart';
 
 import '../../../providers/charging_provider.dart';
 import '../../../services/foreground_battery_service.dart';
@@ -13,47 +14,72 @@ class ChargePercentagePicker extends StatefulWidget {
 }
 
 class _ChargePercentagePickerState extends State<ChargePercentagePicker> {
-  late int _initialValue;
-
-  @override
-  void initState() {
-    super.initState();
-    _initialValue = Provider.of<ChargingProvider>(context, listen: false).chargingPreferences.chargePercentage;
-  }
-
   @override
   Widget build(BuildContext context) {
-    return SleekCircularSlider(
-      initialValue: _initialValue.toDouble(),
-      min: 0,
-      max: 100,
-      innerWidget: (percentage) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (percentage.round() != 0) const Text('Charge to:'),
-            Text(
-              percentage.round() == 0 ? 'OFF' : '${percentage.round()}%',
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w500),
-            ),
-          ],
+    final chargePercentage = context.select<ChargingProvider, int>((v) => v.chargingPreferences.chargePercentage);
+    final chargePercentageTurnOn = context.select<ChargingProvider, int>((v) => v.chargingPreferences.chargePercentageTurnOn);
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const SizedBox(height: 8,),
+        Text.rich(
+          TextSpan(
+            text: 'Charge to: ',
+            children: [
+              TextSpan(
+                text: chargePercentage.round() != 0 ? '${chargePercentage.round()}%' : 'OFF',
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
         ),
-      ),
-      appearance: CircularSliderAppearance(
-        customColors: CustomSliderColors(
-          dotColor: Colors.green.shade900,
-          dynamicGradient: false,
-          hideShadow: true,
-          trackColor: Colors.green.shade100,
-          progressBarColors: [Colors.green.shade200, Colors.green.shade800],
+        Slider(
+          value: chargePercentage.toDouble(),
+          min: 0,
+          max: 100,
+          divisions: 100,
+          label: chargePercentage.round() == 0 ? 'OFF' : '${chargePercentage.round()}%',
+          onChanged: (double value) {
+            // Should move the logic into the provider but whatever
+            final cp = Provider.of<ChargingProvider>(context, listen: false);
+            cp.chargingPreferences.chargePercentage = value.round();
+            cp.chargingPreferences.chargePercentageTurnOn = max(0, min(
+              cp.chargingPreferences.chargePercentageTurnOn,
+              cp.chargingPreferences.chargePercentage - 1,
+            ));
+            cp.chargingPreferences.chargeOff ? stopBatteryService() : startBatteryService();
+            cp.save();
+          },
         ),
-      ),
-      onChangeEnd: (double value) {
-        final cp = Provider.of<ChargingProvider>(context, listen: false);
-        cp.chargingPreferences.chargePercentage = value.round();
-        cp.chargingPreferences.chargeOff ? stopBatteryService() : startBatteryService();
-        cp.save();
-      },
+        const SizedBox(height: 8,),
+        Text.rich(
+          TextSpan(
+            text: 'Start charging again at: ',
+            children: [
+              TextSpan(
+                text: chargePercentageTurnOn.round() != 0 ? '${chargePercentageTurnOn.round()}%' : 'OFF',
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
+        ),
+        Slider(
+          value: chargePercentageTurnOn.toDouble(),
+          min: 0,
+          max: 100,
+          divisions: 100,
+          label: chargePercentageTurnOn.round() == 0 ? 'OFF' : '${chargePercentageTurnOn.round()}%',
+          onChanged: (double value) {
+            // Should move the logic into the provider but whatever
+            final cp = Provider.of<ChargingProvider>(context, listen: false);
+            cp.chargingPreferences.chargePercentageTurnOn = max(0, min(value.round(), cp.chargingPreferences.chargePercentage - 1));
+            cp.save();
+          },
+          activeColor: Colors.blue,
+          inactiveColor: Colors.blue.shade100,
+        ),
+      ],
     );
   }
 }
