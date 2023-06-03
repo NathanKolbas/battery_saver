@@ -88,7 +88,7 @@ data class NativeBatteryInfo (
   }
 }
 @Suppress("UNCHECKED_CAST")
-private object BatteryChangedPigeonCodec : StandardMessageCodec() {
+private object NBatteryChangedPigeonCodec : StandardMessageCodec() {
   override fun readValueOfType(type: Byte, buffer: ByteBuffer): Any? {
     return when (type) {
       128.toByte() -> {
@@ -112,17 +112,61 @@ private object BatteryChangedPigeonCodec : StandardMessageCodec() {
 
 /** Generated class from Pigeon that represents Flutter messages that can be called from Kotlin. */
 @Suppress("UNCHECKED_CAST")
-class BatteryChangedPigeon(private val binaryMessenger: BinaryMessenger) {
+class NBatteryChangedPigeon(private val binaryMessenger: BinaryMessenger) {
   companion object {
-    /** The codec used by BatteryChangedPigeon. */
+    /** The codec used by NBatteryChangedPigeon. */
     val codec: MessageCodec<Any?> by lazy {
-      BatteryChangedPigeonCodec
+      NBatteryChangedPigeonCodec
     }
   }
-  fun nativeSendMessage(infoArg: NativeBatteryInfo, callback: () -> Unit) {
-    val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.BatteryChangedPigeon.nativeSendMessage", codec)
+  fun sendBatteryInfo(infoArg: NativeBatteryInfo, callback: () -> Unit) {
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.NBatteryChangedPigeon.sendBatteryInfo", codec)
     channel.send(listOf(infoArg)) {
       callback()
+    }
+  }
+  fun turnOnAllPlugs(callback: () -> Unit) {
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.NBatteryChangedPigeon.turnOnAllPlugs", codec)
+    channel.send(null) {
+      callback()
+    }
+  }
+  fun turnOffAllPlugs(callback: () -> Unit) {
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.NBatteryChangedPigeon.turnOffAllPlugs", codec)
+    channel.send(null) {
+      callback()
+    }
+  }
+}
+/** Generated interface from Pigeon that represents a handler of messages from Flutter. */
+interface FBatteryChangedPigeon {
+  fun openPersistentNotificationSettings()
+
+  companion object {
+    /** The codec used by FBatteryChangedPigeon. */
+    val codec: MessageCodec<Any?> by lazy {
+      StandardMessageCodec()
+    }
+    /** Sets up an instance of `FBatteryChangedPigeon` to handle messages through the `binaryMessenger`. */
+    @Suppress("UNCHECKED_CAST")
+    fun setUp(binaryMessenger: BinaryMessenger, api: FBatteryChangedPigeon?) {
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.FBatteryChangedPigeon.openPersistentNotificationSettings", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            var wrapped: List<Any?>
+            try {
+              api.openPersistentNotificationSettings()
+              wrapped = listOf<Any?>(null)
+            } catch (exception: Throwable) {
+              wrapped = wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
     }
   }
 }

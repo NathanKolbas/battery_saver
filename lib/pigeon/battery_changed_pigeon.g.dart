@@ -74,8 +74,8 @@ class NativeBatteryInfo {
   }
 }
 
-class _BatteryChangedPigeonCodec extends StandardMessageCodec {
-  const _BatteryChangedPigeonCodec();
+class _NBatteryChangedPigeonCodec extends StandardMessageCodec {
+  const _NBatteryChangedPigeonCodec();
   @override
   void writeValue(WriteBuffer buffer, Object? value) {
     if (value is NativeBatteryInfo) {
@@ -97,30 +97,95 @@ class _BatteryChangedPigeonCodec extends StandardMessageCodec {
   }
 }
 
-abstract class BatteryChangedPigeon {
-  static const MessageCodec<Object?> codec = _BatteryChangedPigeonCodec();
+abstract class NBatteryChangedPigeon {
+  static const MessageCodec<Object?> codec = _NBatteryChangedPigeonCodec();
 
-  void nativeSendMessage(NativeBatteryInfo info);
+  void sendBatteryInfo(NativeBatteryInfo info);
 
-  static void setup(BatteryChangedPigeon? api, {BinaryMessenger? binaryMessenger}) {
+  void turnOnAllPlugs();
+
+  void turnOffAllPlugs();
+
+  static void setup(NBatteryChangedPigeon? api, {BinaryMessenger? binaryMessenger}) {
     {
       final BasicMessageChannel<Object?> channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.BatteryChangedPigeon.nativeSendMessage', codec,
+          'dev.flutter.pigeon.NBatteryChangedPigeon.sendBatteryInfo', codec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
         channel.setMessageHandler(null);
       } else {
         channel.setMessageHandler((Object? message) async {
           assert(message != null,
-          'Argument for dev.flutter.pigeon.BatteryChangedPigeon.nativeSendMessage was null.');
+          'Argument for dev.flutter.pigeon.NBatteryChangedPigeon.sendBatteryInfo was null.');
           final List<Object?> args = (message as List<Object?>?)!;
           final NativeBatteryInfo? arg_info = (args[0] as NativeBatteryInfo?);
           assert(arg_info != null,
-              'Argument for dev.flutter.pigeon.BatteryChangedPigeon.nativeSendMessage was null, expected non-null NativeBatteryInfo.');
-          api.nativeSendMessage(arg_info!);
+              'Argument for dev.flutter.pigeon.NBatteryChangedPigeon.sendBatteryInfo was null, expected non-null NativeBatteryInfo.');
+          api.sendBatteryInfo(arg_info!);
           return;
         });
       }
+    }
+    {
+      final BasicMessageChannel<Object?> channel = BasicMessageChannel<Object?>(
+          'dev.flutter.pigeon.NBatteryChangedPigeon.turnOnAllPlugs', codec,
+          binaryMessenger: binaryMessenger);
+      if (api == null) {
+        channel.setMessageHandler(null);
+      } else {
+        channel.setMessageHandler((Object? message) async {
+          // ignore message
+          api.turnOnAllPlugs();
+          return;
+        });
+      }
+    }
+    {
+      final BasicMessageChannel<Object?> channel = BasicMessageChannel<Object?>(
+          'dev.flutter.pigeon.NBatteryChangedPigeon.turnOffAllPlugs', codec,
+          binaryMessenger: binaryMessenger);
+      if (api == null) {
+        channel.setMessageHandler(null);
+      } else {
+        channel.setMessageHandler((Object? message) async {
+          // ignore message
+          api.turnOffAllPlugs();
+          return;
+        });
+      }
+    }
+  }
+}
+
+class FBatteryChangedPigeon {
+  /// Constructor for [FBatteryChangedPigeon].  The [binaryMessenger] named argument is
+  /// available for dependency injection.  If it is left null, the default
+  /// BinaryMessenger will be used which routes to the host platform.
+  FBatteryChangedPigeon({BinaryMessenger? binaryMessenger})
+      : _binaryMessenger = binaryMessenger;
+  final BinaryMessenger? _binaryMessenger;
+
+  static const MessageCodec<Object?> codec = StandardMessageCodec();
+
+  Future<void> openPersistentNotificationSettings() async {
+    final BasicMessageChannel<Object?> channel = BasicMessageChannel<Object?>(
+        'dev.flutter.pigeon.FBatteryChangedPigeon.openPersistentNotificationSettings', codec,
+        binaryMessenger: _binaryMessenger);
+    final List<Object?>? replyList =
+        await channel.send(null) as List<Object?>?;
+    if (replyList == null) {
+      throw PlatformException(
+        code: 'channel-error',
+        message: 'Unable to establish connection on channel.',
+      );
+    } else if (replyList.length > 1) {
+      throw PlatformException(
+        code: replyList[0]! as String,
+        message: replyList[1] as String?,
+        details: replyList[2],
+      );
+    } else {
+      return;
     }
   }
 }

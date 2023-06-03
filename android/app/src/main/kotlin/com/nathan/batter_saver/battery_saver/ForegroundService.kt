@@ -1,6 +1,6 @@
 package com.nathan.batter_saver.battery_saver
 
-import BatteryChangedPigeon
+import NBatteryChangedPigeon
 import NativeBatteryInfo
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -24,15 +24,15 @@ import kotlin.math.roundToInt
 
 
 class ForegroundService : Service() {
-    private var batteryChangedPigeon: BatteryChangedPigeon? = null
+    private var batteryChangedPigeon: NBatteryChangedPigeon? = null
     private var backgroundEngine: FlutterEngine? = null
     private var binaryMessenger: BinaryMessenger? = null
 
     private var isRunning = AtomicBoolean(false)
 
-    private val notificationChannelName: String = "Batter Info Listener"
-    private val notificationChannelDescription: String = "This channel is used to listen for battery changes"
-    private val notificationChannelId: String = "foreground_battery_service"
+    private val notificationChannelName: String = "Battery Info Listener"
+    private val notificationChannelDescription: String = "This channel is used to listen for " +
+            "battery changes. Feel free to turn off the notification."
     private val notificationId: Int = 1
     private val notificationIcon: Int = R.drawable.ic_baseline_energy_savings_leaf_24
 
@@ -84,7 +84,7 @@ class ForegroundService : Service() {
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val importance = NotificationManager.IMPORTANCE_LOW
-            val channel = NotificationChannel(notificationChannelId, notificationChannelName, importance)
+            val channel = NotificationChannel(NOTIFICATION_CHANNEL_ID, notificationChannelName, importance)
             channel.description = notificationChannelDescription
             channel.enableVibration(false)
             channel.setSound(null, null)
@@ -101,19 +101,44 @@ class ForegroundService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             flags = flags or PendingIntent.FLAG_MUTABLE
         }
-        val pi = PendingIntent.getActivity(this@ForegroundService, 11, i, flags)
-        val mBuilder: NotificationCompat.Builder = NotificationCompat.Builder(this, notificationChannelId)
+        val pendingIntent = PendingIntent.getActivity(this@ForegroundService, 11, i, flags)
+
+        // Setting up the notification actions
+        // Turn on plugs
+        val actionOnIntent = Intent(applicationContext, ForegroundService::class.java).apply {
+            action = NOTIFICATION_PENDING_INTENT_PLUGS_ON
+        }
+        val actionOnPendingIntent = PendingIntent.getService(applicationContext, 0, actionOnIntent, PendingIntent.FLAG_IMMUTABLE)
+        val actionOn = NotificationCompat.Action.Builder(null, "Turn On Plugs", actionOnPendingIntent).build()
+
+        // Turn off plugs
+        val actionOffIntent = Intent(applicationContext, ForegroundService::class.java).apply {
+            action = NOTIFICATION_PENDING_INTENT_PLUGS_OFF
+        }
+        val actionOffPendingIntent = PendingIntent.getService(applicationContext, 0, actionOffIntent, PendingIntent.FLAG_IMMUTABLE)
+        val actionOff = NotificationCompat.Action.Builder(null, "Turn Off Plugs", actionOffPendingIntent).build()
+
+        val mBuilder: NotificationCompat.Builder = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(notificationIcon)
             .setAutoCancel(true)
             .setOngoing(true)
             .setContentTitle(notificationTitle)
             .setContentText(notificationContent)
-            .setContentIntent(pi)
+            .setContentIntent(pendingIntent)
+            .addAction(actionOn)
+            .addAction(actionOff)
         startForeground(notificationId, mBuilder.build())
     }
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         runService()
+
+        if (intent.action == NOTIFICATION_PENDING_INTENT_PLUGS_ON) {
+            batteryChangedPigeon?.turnOnAllPlugs {}
+        } else if (intent.action == NOTIFICATION_PENDING_INTENT_PLUGS_OFF) {
+            batteryChangedPigeon?.turnOffAllPlugs {}
+        }
+
         return START_STICKY
     }
 
@@ -138,7 +163,7 @@ class ForegroundService : Service() {
             backgroundEngine = FlutterEngine(this)
             backgroundEngine!!.serviceControlSurface.attachToService(this@ForegroundService, null, true)
             binaryMessenger = backgroundEngine!!.dartExecutor.binaryMessenger
-            batteryChangedPigeon = BatteryChangedPigeon(binaryMessenger!!)
+            batteryChangedPigeon = NBatteryChangedPigeon(binaryMessenger!!)
 
             val dartEntrypoint = DartEntrypoint(flutterLoader.findAppBundlePath(), "setupPigeon")
             backgroundEngine!!.dartExecutor.executeDartEntrypoint(dartEntrypoint)
@@ -224,7 +249,7 @@ class ForegroundService : Service() {
                         chargePlug,
                         batteryHealth,
                     )
-                    batteryChangedPigeon?.nativeSendMessage(info) {}
+                    batteryChangedPigeon?.sendBatteryInfo(info) {}
                 } catch (e: Exception) {
                     Log.d(TAG, "Battery Info Error")
                 }
@@ -237,6 +262,9 @@ class ForegroundService : Service() {
     companion object {
         private const val TAG = "ForegroundService"
         private const val DEFAULT_NOTIFICATION_TITLE = "Battery Saver"
+        const val NOTIFICATION_CHANNEL_ID = "foreground_battery_service"
+        private const val NOTIFICATION_PENDING_INTENT_PLUGS_ON = "com.nathan.batter_saver.ForegroundService.NOTIFICATION_PENDING_INTENT_PLUGS_ON"
+        private const val NOTIFICATION_PENDING_INTENT_PLUGS_OFF = "com.nathan.batter_saver.ForegroundService.NOTIFICATION_PENDING_INTENT_PLUGS_OFF"
 
         fun microAmpsString(microAmps: Long): String {
             val milliAmps = (microAmps / 1000f).roundToInt()
