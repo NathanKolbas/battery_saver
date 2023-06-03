@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
@@ -37,7 +36,10 @@ class GitHubUpdater {
   final String userName;
   final String repoName;
 
-  GitHubUpdater({this.repoName=gitHubUserName, this.userName=gitHubRepoName});
+  GitHubUpdater({
+    this.repoName = gitHubRepoName,
+    this.userName = gitHubUserName,
+  });
 
   String get gitHubReleaseUrl => "https://api.github.com/repos/$userName/$repoName/releases/latest";
 
@@ -49,6 +51,7 @@ class GitHubUpdater {
 
   Future<GitHubUpdaterCheckUpdate> checkForUpdate() async {
     final latest = await fetchGithubReleaseLatest();
+    print(latest);
     if (latest['message'] == 'Not Found') {
       // No release found
       return GitHubUpdaterCheckUpdate(response: GitHubUpdaterCheckUpdateResponse.notFound);
