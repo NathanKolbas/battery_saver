@@ -1,5 +1,7 @@
 package com.nathan.batter_saver.battery_saver
 
+import BatteryChangedPigeon
+import NativeBatteryInfo
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -13,12 +15,19 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import java.text.DecimalFormat
+import io.flutter.FlutterInjector
+import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.embedding.engine.dart.DartExecutor.DartEntrypoint
+import io.flutter.plugin.common.BinaryMessenger
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.roundToInt
 
 
 class ForegroundService : Service() {
+    private var batteryChangedPigeon: BatteryChangedPigeon? = null
+    private var backgroundEngine: FlutterEngine? = null
+    private var binaryMessenger: BinaryMessenger? = null
+
     private var isRunning = AtomicBoolean(false)
 
     private val notificationChannelName: String = "Batter Info Listener"
@@ -57,6 +66,18 @@ class ForegroundService : Service() {
         }
         unregisterReceiver(broadcastReceiver)
         isRunning.set(false)
+
+        batteryChangedPigeon = null
+        // Release the Flutter engine
+        backgroundEngine.apply {
+            if (this == null) return
+
+            serviceControlSurface.detachFromService()
+            destroy()
+        }
+        backgroundEngine = null
+        binaryMessenger = null
+
         super.onDestroy()
     }
 
@@ -98,9 +119,29 @@ class ForegroundService : Service() {
 
     private fun runService() {
         try {
+            if (isRunning.get() || (backgroundEngine != null && !backgroundEngine!!.dartExecutor.isExecutingDart)) {
+                Log.v(TAG, "Service already running, using existing service")
+                return
+            }
+
             updateNotificationInfo()
 
+            val flutterLoader = FlutterInjector.instance().flutterLoader()
+            // initialize flutter if it's not initialized yet
+            if (!flutterLoader.initialized()) {
+                flutterLoader.startInitialization(applicationContext)
+            }
+
+            flutterLoader.ensureInitializationComplete(applicationContext, null)
+
             isRunning.set(true)
+            backgroundEngine = FlutterEngine(this)
+            backgroundEngine!!.serviceControlSurface.attachToService(this@ForegroundService, null, true)
+            binaryMessenger = backgroundEngine!!.dartExecutor.binaryMessenger
+            batteryChangedPigeon = BatteryChangedPigeon(binaryMessenger!!)
+
+            val dartEntrypoint = DartEntrypoint(flutterLoader.findAppBundlePath(), "setupPigeon")
+            backgroundEngine!!.dartExecutor.executeDartEntrypoint(dartEntrypoint)
         } catch (e: UnsatisfiedLinkError) {
             notificationContent = "Error " + e.message
             updateNotificationInfo()
@@ -171,7 +212,19 @@ class ForegroundService : Service() {
                     updateNotificationInfo()
 
                     // Send data back to Dart to handle Wyze
-
+                    val info = NativeBatteryInfo(
+                        batteryLevel.toLong(),
+                        batteryTemperature.toLong(),
+                        voltage.toLong(),
+                        currentNow,
+                        avgCurrent,
+                        batteryLow,
+                        batteryPresent,
+                        batteryStatus,
+                        chargePlug,
+                        batteryHealth,
+                    )
+                    batteryChangedPigeon?.nativeSendMessage(info) {}
                 } catch (e: Exception) {
                     Log.d(TAG, "Battery Info Error")
                 }
@@ -187,10 +240,10 @@ class ForegroundService : Service() {
 
         fun microAmpsString(microAmps: Long): String {
             val milliAmps = (microAmps / 1000f).roundToInt()
-            if (milliAmps < 1000) return "$milliAmps mA";
+            if (milliAmps < 1000) return "$milliAmps mA"
 
             val amps = (milliAmps / 1000f).roundToInt()
-            return "$amps A";
+            return "$amps A"
         }
 
         fun chargeTimeRemainingString(timeRemaining: Long): String {

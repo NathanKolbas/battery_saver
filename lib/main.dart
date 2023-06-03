@@ -3,13 +3,26 @@ import 'package:battery_saver/pages/home/home_page.dart';
 import 'package:battery_saver/pages/login/login_page.dart';
 import 'package:battery_saver/providers/charging_provider.dart';
 import 'package:battery_saver/providers/wyze_client_provider.dart';
-import 'package:battery_saver/services/foreground_battery_service.dart';
+import 'package:battery_saver/services/battery_changed_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:provider/provider.dart';
 
 import 'helpers/updater.dart';
 
+/// Used as an entry point to call from Native side to setup Pigeon
+///
+/// Not sure how to change which file (it only looks at main or is
+/// it bundled and the other function is stripped/shaken?), as I wanted
+/// to have the entry-point in battery_changed_service.dart
+@pragma('vm:entry-point')
+Future<void> setupPigeon() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Setup Hive
+  await setupHive();
+  // Setup Pigeon
+  DartBatteryChangedPigeon();
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,9 +30,6 @@ void main() async {
   await setupHive();
   // Setup Wyze
   await WyzeClientProvider().initialize();
-  // Setup foreground service
-  await initializeBatteryService();
-  startBatteryService();
 
   runApp(
     MultiProvider(

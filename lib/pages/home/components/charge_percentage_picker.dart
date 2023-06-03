@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../providers/charging_provider.dart';
-import '../../../services/foreground_battery_service.dart';
 
 class ChargePercentagePicker extends StatefulWidget {
   const ChargePercentagePicker({Key? key}) : super(key: key);
@@ -48,7 +47,6 @@ class _ChargePercentagePickerState extends State<ChargePercentagePicker> {
               cp.chargingPreferences.chargePercentageTurnOn,
               cp.chargingPreferences.chargePercentage - 1,
             ));
-            cp.chargingPreferences.chargeOff ? stopBatteryService() : startBatteryService();
             cp.save();
           },
         ),

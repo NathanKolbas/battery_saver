@@ -1,6 +1,5 @@
 import 'package:battery_saver/helpers/updater.dart';
 import 'package:battery_saver/pages/home/components/devices.dart';
-import 'package:disable_battery_optimization/disable_battery_optimization.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher_string.dart';
@@ -16,19 +15,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  requestBatteryOptimizationDisabled() async {
-    bool isBatteryOptimizationDisabled = (await DisableBatteryOptimization.isBatteryOptimizationDisabled) == true;
-    if (!isBatteryOptimizationDisabled) await DisableBatteryOptimization.showDisableBatteryOptimizationSettings();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-
-    // Disable battery optimizations
-    requestBatteryOptimizationDisabled();
-  }
-
   @override
   Widget build(BuildContext context, [bool mounted = true]) {
     return Scaffold(
