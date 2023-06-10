@@ -32,6 +32,8 @@ class _HomePageState extends State<HomePage> {
 
     // Disable battery optimizations
     requestBatteryOptimizationDisabled();
+
+    WyzeClientProvider().refreshTokenIfExpired();
   }
 
   @override

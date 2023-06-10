@@ -24,11 +24,15 @@ class DartBatteryChangedPigeon extends NBatteryChangedPigeon {
 
     if (info.batteryStatus == 'Charging') {
       if ((info.batteryLevel ?? 0) >= chargingPreferences.chargePercentage) {
+        wyzeClientProvider.refreshTokenIfExpired();
+
         // Turn off all the plugs since we reached the charge
         turnOffAllPlugs(wyzeClientProvider, chargingPreferences);
       }
     } else {
       if ((info.batteryLevel ?? 0) <= chargingPreferences.chargePercentageTurnOn) {
+        wyzeClientProvider.refreshTokenIfExpired();
+
         // Turn on all the plugs since we reached to min charge
         turnOnAllPlugs(wyzeClientProvider, chargingPreferences);
       }

@@ -85,9 +85,23 @@ class WyzeClientProvider with ChangeNotifier {
     if (accessToken == null || accessToken is! String || accessToken.isEmpty) return false;
     if (refreshToken == null || refreshToken is! String || refreshToken.isEmpty) return false;
 
-    wyzeSecureStorage.set(accessToken: accessToken, refreshToken: refreshToken);
+    wyzeSecureStorage.set(accessToken: accessToken, refreshToken: refreshToken, refreshTokenDate: DateTime.now().toIso8601String());
 
     return true;
+  }
+
+  Future<bool> refreshTokenIfExpired() async {
+    final creds = await wyzeSecureStorage.get();
+    final refreshedOnDateString = creds.refreshTokenDate;
+    final refreshedOnDate = refreshedOnDateString != null ? DateTime.parse(refreshedOnDateString) : DateTime(0);
+    final now = DateTime.now();
+
+    if (now.difference(refreshedOnDate) > const Duration(days: 1)) {
+      refreshToken();
+      return true;
+    }
+
+    return false;
   }
 
   turnOffPlug(String mac, String model) => client.plugs.turnOff(deviceMac: mac, deviceModel: model);
