@@ -85,7 +85,22 @@ class Plug extends AbstractWirelessNetworkedDevice with SwitchableMixin {
 class OutdoorPlug extends Plug {
   static const pType = "OutdoorPlug";
 
-  OutdoorPlug({required Map<String, dynamic> others}) : super(type: pType, others: others);
+  OutdoorPlug({required Map<String, dynamic> others}) : super(type: pType, others: others) {
+    _photosensitiveSwitch = extractProperty(propDef: PlugProps.photosensitiveSwitch(), others: others);
+    // show_unknown_key_warning(others);
+  }
 
-  // TODO: more in here to implement
+  DeviceProp? _photosensitiveSwitch;
+
+  bool get isPhotosensitive => photosensitiveSwitch;
+
+  bool get photosensitiveSwitch => _photosensitiveSwitch == null ? false : _photosensitiveSwitch!.value;
+
+  // int, DeviceProp
+  set photosensitiveSwitch(dynamic value) {
+    if (value is int) {
+      value = DeviceProp(definition: PlugProps.photosensitiveSwitch(), value: value);
+    }
+    _photosensitiveSwitch = value;
+  }
 }

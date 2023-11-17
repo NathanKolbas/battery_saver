@@ -41,10 +41,18 @@ class GitHubUpdater {
     this.userName = gitHubUserName,
   });
 
-  String get gitHubReleaseUrl => "https://api.github.com/repos/$userName/$repoName/releases/latest";
+  String get gitHubReleaseUrl => "https://api.github.com/repos/$userName/$repoName/releases";
+  String get gitHubLatestReleaseUrl => "$gitHubReleaseUrl/latest";
+  String gitHubReleaseTagUrl(String tag) => "$gitHubReleaseUrl/tags/$tag";
 
   Future<Map> fetchGithubReleaseLatest() async {
-    final response = await http.get(Uri.parse(gitHubReleaseUrl));
+    final response = await http.get(Uri.parse(gitHubLatestReleaseUrl));
+    final decodedResponse = jsonDecode(response.body) as Map;
+    return decodedResponse;
+  }
+
+  Future<Map> fetchGithubReleaseForTag(String tag) async {
+    final response = await http.get(Uri.parse(gitHubReleaseTagUrl(tag)));
     final decodedResponse = jsonDecode(response.body) as Map;
     return decodedResponse;
   }
@@ -86,6 +94,12 @@ class GitHubUpdater {
     return GitHubUpdaterCheckUpdate(response: GitHubUpdaterCheckUpdateResponse.notFound);
   }
 
+  Future<String?> getReleaseNotesForTag(String tag) async {
+    final release = await fetchGithubReleaseForTag(tag);
+    print(release);
+    return release['body'] as String?;
+  }
+
   updateSnackBar(BuildContext context, bool mounted, {bool showNoUpdate=false}) async {
     final data = await checkForUpdate();
     String content = '';
@@ -107,6 +121,7 @@ class GitHubUpdater {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(content),
+      dismissDirection: DismissDirection.horizontal,
       action: data.response == GitHubUpdaterCheckUpdateResponse.update ? SnackBarAction(
         onPressed: () => launchUrlString(data.releaseUrl, mode: LaunchMode.externalApplication),
         label: 'Download',

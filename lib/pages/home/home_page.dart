@@ -2,6 +2,8 @@ import 'package:battery_saver/helpers/updater.dart';
 import 'package:battery_saver/pages/home/components/devices.dart';
 import 'package:disable_battery_optimization/disable_battery_optimization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
@@ -20,6 +22,8 @@ class _HomePageState extends State<HomePage> {
   bool? isBatteryOptimizationDisabled;
   final fBatteryChangedPigeon = FBatteryChangedPigeon();
 
+  String applicationVersion = 'unknown';
+
   requestBatteryOptimizationDisabled() async {
     isBatteryOptimizationDisabled = (await DisableBatteryOptimization.isBatteryOptimizationDisabled) == true;
     if (!(isBatteryOptimizationDisabled!)) await DisableBatteryOptimization.showDisableBatteryOptimizationSettings();
@@ -34,6 +38,10 @@ class _HomePageState extends State<HomePage> {
     requestBatteryOptimizationDisabled();
 
     WyzeClientProvider().refreshTokenIfExpired();
+
+    PackageInfo.fromPlatform().then((pkgInfo) {
+      applicationVersion = pkgInfo.version;
+    });
   }
 
   @override
@@ -53,8 +61,8 @@ class _HomePageState extends State<HomePage> {
               itemBuilder: (context) => [
                 PopupMenuItem(
                   onTap: Provider.of<WyzeClientProvider>(context, listen: false).logout,
-                  child: Row(
-                    children: const [
+                  child: const Row(
+                    children: [
                       Text('Logout'),
                       SizedBox(width: 4,),
                       Icon(Icons.logout),
@@ -75,8 +83,8 @@ class _HomePageState extends State<HomePage> {
                       ));
                     }
                   },
-                  child: Row(
-                    children: const [
+                  child: const Row(
+                    children: [
                       Text('Refresh token'),
                       SizedBox(width: 4,),
                       Icon(Icons.refresh),
@@ -85,8 +93,8 @@ class _HomePageState extends State<HomePage> {
                 ),
                 PopupMenuItem(
                   onTap: () async => GitHubUpdater().updateSnackBar(context, mounted, showNoUpdate: true),
-                  child: Row(
-                    children: const [
+                  child: const Row(
+                    children: [
                       Text('Check for update'),
                       SizedBox(width: 4,),
                       Icon(Icons.update),
@@ -96,6 +104,41 @@ class _HomePageState extends State<HomePage> {
                 PopupMenuItem(
                   onTap: () => launchUrlString('https://github.com/NathanKolbas/batter_saver', mode: LaunchMode.externalApplication),
                   child: const Text('GitHub'),
+                ),
+                PopupMenuItem(
+                  onTap: () => showDialog(
+                    context: context,
+                    builder: (context) => AboutDialog(
+                      applicationVersion: applicationVersion,
+                      applicationIcon: Image.asset('assets/images/ic_launcher_round.png', height: 40),
+                      children: [
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            FutureBuilder(
+                              future: GitHubUpdater().getReleaseNotesForTag('0.0.8'),
+                              builder: (context, snapshot) {
+                                if (!snapshot.hasData) return const CircularProgressIndicator();
+
+                                return SizedBox(
+                                  width: 350,
+                                  height: 250,
+                                  child: Markdown(data: snapshot.data ?? 'No release notes', shrinkWrap: true,),
+                                );
+                              },
+                            ),
+                          ],
+                        )
+                      ],
+                    ),
+                  ),
+                  child: const Row(
+                    children: [
+                      Text('About'),
+                      SizedBox(width: 4,),
+                      Icon(Icons.info_outline),
+                    ],
+                  ),
                 ),
               ],
             ),

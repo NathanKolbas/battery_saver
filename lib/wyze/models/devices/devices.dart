@@ -12,6 +12,8 @@ class DeviceParser {
       switch (type) {
         case Plug.pType:
           return Plug(type: device["type"], others: device);
+        case OutdoorPlug.pType:
+          return OutdoorPlug(others: device);
       }
     }
     debugPrint("Unknown device detected and skipped ($device)");
