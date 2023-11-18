@@ -116,7 +116,7 @@ class _HomePageState extends State<HomePage> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             FutureBuilder(
-                              future: GitHubUpdater().getReleaseNotesForTag('0.0.8'),
+                              future: GitHubUpdater().getReleaseNotesForTag(applicationVersion),
                               builder: (context, snapshot) {
                                 if (!snapshot.hasData) return const CircularProgressIndicator();
 
