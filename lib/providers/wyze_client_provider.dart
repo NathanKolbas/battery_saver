@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 import '../wyze/api/client.dart';
 import '../wyze/service/auth_service.dart';
@@ -50,8 +50,10 @@ class WyzeClientProvider with ChangeNotifier {
   }
 
   /// Login to Wyze
-  Future<bool> login(String email, String password, Future<String?> Function(TotpCallbackType type)? totpCallback) async {
-    final response = await client.login(email, password, totpCallback);
+  Future<bool> login(String email, String password, String keyId, String apiKey, Future<String?> Function(TotpCallbackType type)? totpCallback) async {
+    final response = await client.login(email, password, keyId, apiKey, totpCallback);
+    if (kDebugMode) print(response);
+
     final decodedResponse = jsonDecode(response.body) as Map;
     final accessToken = decodedResponse['access_token'];
     final refreshToken = decodedResponse['refresh_token'];
@@ -78,6 +80,8 @@ class WyzeClientProvider with ChangeNotifier {
 
   Future<bool> refreshToken() async {
     final response = await client.refreshTokenFn();
+    if (response == null) return false;
+
     final decodedResponse = jsonDecode(response.body) as Map;
     final accessToken = decodedResponse['data']['access_token'];
     final refreshToken = decodedResponse['data']['refresh_token'];

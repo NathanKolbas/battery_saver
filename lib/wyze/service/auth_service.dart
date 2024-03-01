@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:otp/otp.dart';
 
 import 'package:battery_saver/wyze/errors/wyze_errors.dart';
 import 'package:http/http.dart' as http;
 
+import '../version.dart' as version;
 import '../signature/signature.dart';
 import 'base.dart';
 
@@ -69,6 +71,8 @@ class AuthServiceClient extends ExServiceClient {
   Future<http.Response> userLogin({
     required String email,
     required String password,
+    String? keyId,
+    String? apiKey,
     String? totpKey,
     Future<String?> Function(TotpCallbackType type)? totpCallback,
   }) async {
@@ -81,10 +85,16 @@ class AuthServiceClient extends ExServiceClient {
       'email': email,
       'password': password
     };
-    final response = await apiCall(apiEndpoint: '/user/login', json: kwargs, nonce: nonce);
+    final apiHeaders = {
+      "keyid": keyId ?? '',
+      "apikey": apiKey ?? '',
+      "user-agent": 'wyze-sdk-${version.VERSION}',
+    };
+    final response = await apiCall(apiEndpoint: '/api/user/login', json: kwargs, requestSpecificHeaders: apiHeaders, nonce: nonce);
     final decodedResponse = jsonDecode(response.body) as Map;
+    if (kDebugMode) print(decodedResponse);
     if (decodedResponse['access_token'] != null) return response;
-    if (decodedResponse['errorCode'] == 1000) throw const WyzeApiError('Too many failed attempts');
+    if (decodedResponse['errorCode'] != null) throw WyzeApiError(decodedResponse['description']);
     if (totpCallback == null) throw const WyzeClientConfigurationError('MFA needed but no callback function provided');
 
     var mfaType = '';

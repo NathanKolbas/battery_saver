@@ -37,6 +37,7 @@ class _DeviceSwitchState extends State<DeviceSwitch> {
         }),
         style: OutlinedButton.styleFrom(
           foregroundColor: on ? Colors.green : Colors.black,
+          padding: EdgeInsets.zero,
           side: BorderSide(
             color: on ? Colors.green : Colors.black,
           ),
@@ -46,7 +47,10 @@ class _DeviceSwitchState extends State<DeviceSwitch> {
             ),
           ),
         ),
-        child: Text(on ? 'On' : 'Off'),
+        child: Text(
+          on ? 'On' : 'Off',
+          softWrap: false,
+        ),
       ),
     );
   }

@@ -50,7 +50,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Batter Saver',
       theme: ThemeData(
-        primarySwatch: Colors.green,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
       ),
       debugShowCheckedModeBanner: false,
       home: const MyHomePage(),

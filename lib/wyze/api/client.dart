@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:battery_saver/extensions/iterable_extensions.dart';
 import 'package:battery_saver/extensions/string_extensions.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../errors/wyze_errors.dart';
@@ -21,6 +21,12 @@ class Client {
   String? email;
   /// An unencrypted string specifying the account password.
   String? password;
+  /// A string used for API-based requests
+  // self._key_id = key_id.strip() if key_id else None
+  String? keyId;
+  /// A string used for API-based requests
+  // self._api_key = api_key.strip() if api_key else None
+  String? apiKey;
   /// An unencrypted string specifying the TOTP Key for automatic TOTP 2FA verification code generation.
   String? totpKey;
   /// An optional string representing the API base URL. **This should not be used except for when running tests.**
@@ -36,6 +42,8 @@ class Client {
     this.refreshToken,
     this.email,
     this.password,
+    this.keyId,
+    this.apiKey,
     this.totpKey,
     this.baseUrl,
     this.timeout = 30,
@@ -44,6 +52,8 @@ class Client {
     refreshToken = refreshToken?.trim();
     email = email?.trim();
     password = password?.trim();
+    keyId = keyId?.trim();
+    apiKey = apiKey?.trim();
     totpKey = totpKey?.trim();
 
     if (token.isNullEmpty && email.isNotNullEmpty) {
@@ -56,7 +66,7 @@ class Client {
   /// made by this ``Client`` unless ``refresh_token()`` is called.
   /// :rtype: WyzeResponse
   /// :raises WyzeClientConfigurationError: If ``access_token`` is already set or both ``email`` and ``password`` are not set.
-  Client.login(String this.email, String this.password, [this.totpKey]) {
+  Client.login(String this.email, String this.password, String this.keyId, String this.apiKey, [this.totpKey]) {
     login(email, password, null, totpKey);
   }
 
@@ -74,7 +84,15 @@ class Client {
     }
   }
 
-  Future<http.Response> login(String? email, String? password, [Future<String?> Function(TotpCallbackType type)? totpCallback, String? totpKey]) async {
+  Future<http.Response> login(
+    String? email,
+    String? password,
+    String? keyId,
+    String? apiKey,
+    [
+      Future<String?> Function(TotpCallbackType type)? totpCallback,
+      String? totpKey
+    ]) async {
     if (token.isNotNullEmpty) {
       throw const WyzeClientConfigurationError("already logged in");
     }
@@ -83,13 +101,29 @@ class Client {
     // provided when constructing the client.
     if (email != null) this.email = email.trim();
     if (password != null) this.password = password.trim();
+    if (keyId != null) this.keyId = keyId.trim();
+    if (apiKey != null) this.apiKey = apiKey.trim();
     if (totpKey != null) this.totpKey = totpKey.trim();
 
     if (this.email.isNullEmpty || this.password.isNullEmpty) {
       throw const WyzeClientConfigurationError("must provide email and password");
     }
+    if (this.keyId.isNullEmpty || this.apiKey.isNullEmpty) {
+      throw const WyzeClientConfigurationError(
+          "Must provide a Wyze API key and id.\n\nAs of July 2023, users must provide an api key and key id to create an access token. "
+              "For more information, please visit https://support.wyze.com/hc/en-us/articles/16129834216731."
+      );
+    }
+
     debugPrint('access token not provided, attempting to login as ${this.email}');
-    final response = await _authClient().userLogin(email: this.email!, password: this.password!, totpKey: this.totpKey, totpCallback: totpCallback);
+    final response = await _authClient().userLogin(
+        email: this.email!,
+        password: this.password!,
+        keyId: this.keyId!,
+        apiKey: this.apiKey!,
+        totpKey: this.totpKey,
+        totpCallback: totpCallback
+    );
     final decodedResponse = jsonDecode(response.body) as Map;
     _updateSession(accessToken: decodedResponse["access_token"], refreshToken: decodedResponse["refresh_token"], userId: decodedResponse["user_id"]);
     return response;
@@ -107,8 +141,11 @@ class Client {
   /// Updates ``access_token`` using the previously set ``refresh_token``.
   /// :rtype: WyzeResponse
   /// :raises WyzeClientConfigurationError: If ``refresh_token`` is not already set.
-  Future<http.Response> refreshTokenFn() async {
-    if (refreshToken == null) throw const WyzeClientConfigurationError("client is not logged in");
+  Future<http.Response?> refreshTokenFn() async {
+    if (refreshToken == null) {
+      if (kDebugMode) print("client is not logged in");
+      return null;
+    }
 
     final response = await _apiClient().refreshToken(refreshToken: refreshToken!);
     final decodedResponse = jsonDecode(response.body) as Map;

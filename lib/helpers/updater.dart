@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
@@ -59,7 +60,7 @@ class GitHubUpdater {
 
   Future<GitHubUpdaterCheckUpdate> checkForUpdate() async {
     final latest = await fetchGithubReleaseLatest();
-    print(latest);
+    if (kDebugMode) print(latest);
     if (latest['message'] == 'Not Found') {
       // No release found
       return GitHubUpdaterCheckUpdate(response: GitHubUpdaterCheckUpdateResponse.notFound);
@@ -96,7 +97,7 @@ class GitHubUpdater {
 
   Future<String?> getReleaseNotesForTag(String tag) async {
     final release = await fetchGithubReleaseForTag(tag);
-    print(release);
+    if (kDebugMode) print(release);
     return release['body'] as String?;
   }
 
@@ -118,7 +119,7 @@ class GitHubUpdater {
         content = 'New update available';
         break;
     }
-    if (!mounted) return;
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(content),
       dismissDirection: DismissDirection.horizontal,

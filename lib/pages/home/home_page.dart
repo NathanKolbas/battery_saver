@@ -73,7 +73,7 @@ class _HomePageState extends State<HomePage> {
                   onTap: () async {
                     try {
                       final success = await Provider.of<WyzeClientProvider>(context, listen: false).refreshToken();
-                      if (!mounted) return;
+                      if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                         content: Text(success ? "Refreshed!" : 'An unknown error occurred'),
                       ));
